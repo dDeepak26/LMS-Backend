@@ -1,21 +1,25 @@
-import express from "express";
 import dotenv from "dotenv";
 dotenv.config();
+import express from "express";
+const app = express();
+
 import cors from "cors";
 import DbConnect from "./Config/DbConnect.js";
 
 // routes import
 import userRoutes from "./Routes/userRoutes.js";
+import courseRoutes from "./Routes/courseRoutes.js";
 
-const app = express();
 
 // middlewares
 app.use(express.json());
-app.use(express.urlencoded());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
 
 // routes
 app.use("/auth", userRoutes);
+app.use("/courses", courseRoutes);
 
 // index test endpoint
 app.get("/", (req, res) => {
