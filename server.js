@@ -1,21 +1,23 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 import express from "express";
 const app = express();
 
 import cors from "cors";
 import DbConnect from "./Config/DbConnect.js";
 
-// routes import
-import userRoutes from "./Routes/userRoutes.js";
-import courseRoutes from "./Routes/courseRoutes.js";
-
-
 // middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
+// routes import
+import userRoutes from "./Routes/userRoutes.js";
+import courseRoutes from "./Routes/courseRoutes.js";
 
 // routes
 app.use("/auth", userRoutes);
