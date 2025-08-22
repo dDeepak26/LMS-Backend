@@ -1,6 +1,24 @@
 import { validationResult } from "express-validator";
 import cloudinary from "../Config/cloudinaryConfig.js";
 import { CourseModel } from "../Models/courseModel.js";
+import streamifier from "streamifier";
+
+// upload to cloudinary
+const uploadToCloudinary = (fileBuffer, folderName, resourceType) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `LMS/${folderName}`,
+        resource_type: resourceType,
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    streamifier.createReadStream(fileBuffer).pipe(stream);
+  });
+};
 
 // get all courses (student)
 
@@ -16,10 +34,9 @@ const createCourse = async (req, res) => {
         .status(403)
         .json({ errMsg: "You are not authorized to create course" });
     }
-    console.log("request body", req.body);
 
     // checking req body
-    if (Object.keys(req.body).length === 0) {
+    if (!req.body || Object.keys(req.body).length === 0) {
       res.status(400).json({ errMsg: "Missing Fields" });
     }
 
@@ -33,12 +50,39 @@ const createCourse = async (req, res) => {
       });
     }
 
-    if (!req.file) {
-      res.status(400).json({ errMsg: "image url not found" });
+    // checking if file is present
+    if (!req.files) {
+      res.status(400).json({ errMsg: "image/video url not found" });
     }
 
     // uploading image to cloudinary
-    let cloudinaryImageUrl = req.file.path;
+    let cloudinaryImageUrl = null;
+    if (req.files?.imageUrl && req.files.imageUrl[0]) {
+      const imageFile = req.files.imageUrl[0].buffer;
+      const uploadImage = await uploadToCloudinary(
+        imageFile,
+        "images",
+        "image"
+      );
+      cloudinaryImageUrl = uploadImage.secure_url;
+    }
+
+    // uploading each file to cloudinary (parallel)
+    let uploadResults = [];
+    if (req.files?.videos && req.files.videos.length > 0) {
+      uploadResults = await Promise.all(
+        req.files.videos.map((file) =>
+          uploadToCloudinary(file.buffer, "videos", "video")
+        )
+      );
+    }
+
+    // merge metadata + video urls by index
+    const lectures = JSON.parse(req.body.lectures);
+    const finalLectures = lectures.map((lec, i) => ({
+      ...lec,
+      videoUrl: uploadResults[i].secure_url || null,
+    }));
 
     // creating course document
     const courseDocument = new CourseModel({
@@ -47,14 +91,13 @@ const createCourse = async (req, res) => {
       category: req.body.category,
       level: req.body.level,
       outcomes: req.body.outcomes,
-      skillsGained: req.body.skillsGained,
+      skillsGained: JSON.parse(req.body.skillsGained),
       instructor: instructor.id,
       price: req.body.price,
       discount: req.body.discount,
       imageUrl: cloudinaryImageUrl,
-      //   lectures: req.body.lectures,
+      lectures: finalLectures,
     });
-
     //  saving course document
     const course = await courseDocument.save();
 

@@ -85,7 +85,7 @@ const courseSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    // lectures: [lectureSchema],
+    lectures: [lectureSchema],
   },
   { timestamps: true }
 );
