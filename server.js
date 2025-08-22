@@ -17,10 +17,12 @@ app.use(
 
 // routes import
 import userRoutes from "./Routes/userRoutes.js";
+import getSignatureRoute from "./Routes/getSignatureRoute.js";
 import courseRoutes from "./Routes/courseRoutes.js";
 
 // routes
 app.use("/auth", userRoutes);
+app.use("/cloudinary", getSignatureRoute);
 app.use("/courses", courseRoutes);
 
 // index test endpoint
