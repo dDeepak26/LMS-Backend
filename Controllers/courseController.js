@@ -1,5 +1,6 @@
 import { validationResult } from "express-validator";
 import { CourseModel } from "../Models/courseModel.js";
+import cloudinary from "../Config/cloudinaryConfig.js";
 
 // get all courses
 const getAllCourses = async (req, res) => {
@@ -63,7 +64,6 @@ const getCourseById = async (req, res) => {
 const getInstructorCourses = async (req, res) => {
   try {
     const instructorId = req.user.id;
-    console.log("called", instructorId);
 
     // checking the role
     if (req.user.role !== "instructor") {
@@ -93,14 +93,14 @@ const createCourse = async (req, res) => {
     // checking user is instructor
     const instructor = req.user;
     if (instructor.role !== "instructor") {
-      res
+      return res
         .status(403)
         .json({ errMsg: "You are not authorized to create course" });
     }
 
     // checking req body
     if (!req.body || Object.keys(req.body).length === 0) {
-      res.status(400).json({ errMsg: "Missing Fields" });
+      return res.status(400).json({ errMsg: "Missing Fields" });
     }
 
     // validating req body
@@ -115,7 +115,7 @@ const createCourse = async (req, res) => {
 
     // checking if file is present
     if (!req.file) {
-      res.status(400).json({ errMsg: "image url not found" });
+      return res.status(400).json({ errMsg: "image url not found" });
     }
 
     // uploading image to cloudinary
@@ -150,5 +150,180 @@ const createCourse = async (req, res) => {
 };
 
 // update course only by instructor
+// update course image by courseId
+const updateCourseImage = async (req, res) => {
+  try {
+    // checking user is instructor
+    const instructor = req.user;
+    if (instructor.role !== "instructor") {
+      res
+        .status(403)
+        .json({ errMsg: "You are not authorized to update course image" });
+    }
 
-export { getAllCourses, getCourseById, getInstructorCourses, createCourse };
+    // course id
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // checking if previous image filename is send in body
+    if (!req.body || !req.body.imageId) {
+      return res
+        .status(400)
+        .json({ errMsg: "Previous Image Id/filename is required" });
+    }
+
+    // checking image is present
+    if (!req.file) {
+      return res.status(400).json({ errMsg: "image url not found" });
+    }
+
+    // deleting the previous course image
+    const previousImageId = req.body.imageId;
+    await cloudinary.uploader.destroy(previousImageId);
+
+    // updating the document
+    const updatedCourseData = await CourseModel.findByIdAndUpdate(
+      courseId,
+      {
+        imageUrl: req.file.path,
+      },
+      { new: true }
+    );
+
+    if (!updatedCourseData) {
+      return res.status(400).json({
+        errMsg: "Error in updating the image url or course not found",
+      });
+    }
+
+    res
+      .status(200)
+      .json({ msg: "Image updated successfully", updatedCourseData });
+  } catch (err) {
+    console.error("Error in updating the course image");
+    res.status(500).json({ errMsg: "Error in updating the course image" });
+  }
+};
+// update course data by courseId
+const updateCourseData = async (req, res) => {
+  try {
+    // checking if user is instructor
+    const instructor = req.user;
+    if (instructor.role !== "instructor") {
+      return res
+        .status(403)
+        .json({ errMsg: "You are not authorized to update course image" });
+    }
+
+    // course id
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // checking if request body is send
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res
+        .status(400)
+        .json({ errMsg: "Request body is required to update the course data" });
+    }
+
+    // validating req body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({
+        errMsg: errors
+          .array()
+          .map((err) => ({ field: err.param, message: err.msg })),
+      });
+    }
+
+    // updating the course
+    const updatedCourseData = await CourseModel.findByIdAndUpdate(
+      courseId,
+      req.body,
+      { new: true }
+    );
+
+    if (!updateCourseData) {
+      return res.status(400).json({
+        errMsg: "Error in updating the Course Data or course not found",
+      });
+    }
+
+    // sending the res
+    res.status(200).json({ msg: "Course Data Updated", updatedCourseData });
+  } catch (err) {
+    console.error("Error in updating the Course Data");
+    res.status(500).json({ errMsg: "Error in updating the Course Data" });
+  }
+};
+
+// update lecture by courseId & lecture.order (Instructor)
+const updateCourseLecture = async (req, res) => {
+  try {
+    // checking if user is instructor
+    const instructor = req.user;
+    if (instructor.role !== "instructor") {
+      return res
+        .status(403)
+        .json({ errMsg: "You are not authorized to update course image" });
+    }
+
+    // course id
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // checking if request body is send
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res
+        .status(400)
+        .json({ errMsg: "Request body is required to update the course data" });
+    }
+
+    const updateData = req.body;
+    console.log(req.body);
+
+    // updating the course lecture by order
+    const updatedLectureData = await CourseModel.findOneAndUpdate(
+      { _id: courseId, "lectures.order": updateData.order },
+      {
+        $set: {
+          "lectures.$.title": updateData.title,
+          "lectures.$.lectureDescription": updateData.lectureDescription,
+          "lectures.$.preview": updateData.preview,
+          "lectures.$.videoUrl": updateData.videoUrl,
+        },
+      },
+      { new: true }
+    );
+    console.log(updatedLectureData);
+
+    if (!updatedLectureData) {
+      res.status(404).json({
+        errMsg: "Error in updating the course lecture no course found",
+      });
+    }
+
+    res.status(200).json({ msg: "lecture updated", updatedLectureData });
+  } catch (err) {
+    console.error("Error in updating the Course Lecture Data");
+    res
+      .status(500)
+      .json({ errMsg: "Error in updating the Course Lecture Data" });
+  }
+};
+
+export {
+  getAllCourses,
+  getCourseById,
+  getInstructorCourses,
+  createCourse,
+  updateCourseImage,
+  updateCourseData,
+  updateCourseLecture,
+};
