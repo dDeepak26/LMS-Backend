@@ -7,13 +7,16 @@ import { uploadMiddleware } from "../Middleware/uploadMiddleWare.js";
 import { logRequestMiddleware } from "../Middleware/logRequestMiddleware.js";
 import {
   createCourse,
+  enrollToCourse,
   getAllCourses,
   getCourseById,
+  getEnrolledCourses,
   getInstructorCourses,
   updateCourseData,
   updateCourseImage,
   updateCourseLecture,
 } from "../Controllers/courseController.js";
+import cloudinary from "../Config/cloudinaryConfig.js";
 
 // get all courses
 router.get("/", authMiddleware, getAllCourses);
@@ -47,11 +50,37 @@ router.put(
 router.put(
   "/data/:courseId",
   authMiddleware,
+  logRequestMiddleware,
   courseValidator,
   updateCourseData
 );
 
 // update course lecture by Id (Instructor)
 router.put("/lecture/:courseId", authMiddleware, updateCourseLecture);
+
+// enroll to course
+router.post("/enroll/:courseId", authMiddleware, enrollToCourse);
+
+// get enrolled courses
+router.get("/enrolled-courses", authMiddleware, getEnrolledCourses);
+
+// delete uploaded video
+router.post("/delete-video", authMiddleware, async (req, res) => {
+  const { publicId } = req.body;
+  console.log("public id in backend to delete", publicId);
+
+  try {
+    if (!publicId) {
+      res.status(400).json({ errMsg: "public id required" });
+    }
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "video",
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ errMsg: "Error in deleting the video" });
+    console.error("Error in deleting the video");
+  }
+});
 
 export default router;

@@ -1,6 +1,7 @@
 import { validationResult } from "express-validator";
 import { CourseModel } from "../Models/courseModel.js";
 import cloudinary from "../Config/cloudinaryConfig.js";
+import { CourseEnrollmentModel } from "../Models/CourseEnrollmentModel.js";
 
 // get all courses
 const getAllCourses = async (req, res) => {
@@ -41,6 +42,9 @@ const getCourseById = async (req, res) => {
     }
 
     const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
 
     // getting the courses
     const courseData = await CourseModel.findById(courseId).populate({
@@ -190,7 +194,10 @@ const updateCourseImage = async (req, res) => {
         imageUrl: req.file.path,
       },
       { new: true }
-    );
+    ).populate({
+      path: "instructor",
+      select: "-password",
+    });
 
     if (!updatedCourseData) {
       return res.status(400).json({
@@ -245,7 +252,10 @@ const updateCourseData = async (req, res) => {
       courseId,
       req.body,
       { new: true }
-    );
+    ).populate({
+      path: "instructor",
+      select: "-password",
+    });
 
     if (!updateCourseData) {
       return res.status(400).json({
@@ -300,7 +310,10 @@ const updateCourseLecture = async (req, res) => {
         },
       },
       { new: true }
-    );
+    ).populate({
+      path: "instructor",
+      select: "-password",
+    });
     console.log(updatedLectureData);
 
     if (!updatedLectureData) {
@@ -318,6 +331,71 @@ const updateCourseLecture = async (req, res) => {
   }
 };
 
+// enroll to course by course id and auth middleware by (Student)
+const enrollToCourse = async (req, res) => {
+  try {
+    // checking if user is student
+    if (req.user.role !== "student") {
+      return res
+        .status(403)
+        .json({ errMsg: "only student can enroll to course" });
+    }
+
+    // checking if course is present in param
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      res.status(400).json({ errMsg: "Course Id is required in param" });
+    }
+
+    // creating new document
+    const enrollmentCourseDoc = new CourseEnrollmentModel({
+      user: req.user.id,
+      course: courseId,
+    });
+
+    // saving
+    const enrollmentCourseData = await enrollmentCourseDoc.save();
+
+    // sending the response
+    res.status(201).json(enrollmentCourseData);
+  } catch (err) {
+    console.error("Error in enrolling to course");
+    res.status(500).json("Error in enrolling to course");
+  }
+};
+
+// get enrolled courses data (student)
+// by user id
+const getEnrolledCourses = async (req, res) => {
+  try {
+    // checking if user is student
+    if (req.user.role !== "student") {
+      return res
+        .status(403)
+        .json({ errMsg: "only student can enroll to course" });
+    }
+
+    // getting the enrolled courses
+    const enrolledCourses = await CourseEnrollmentModel.find({
+      user: req.user.id,
+    }).populate({
+      path: "course",
+      populate: { path: "instructor", select: "-password" },
+    });
+
+    if (enrolledCourses.length === 0) {
+      res.status(404).json({ errMsg: "No Course Found" });
+    }
+
+    // sending res
+    res.status(200).json(enrolledCourses);
+  } catch (err) {
+    console.error("Error in getting the enrolled courses data");
+    res
+      .status(500)
+      .json({ errMsg: "Error in getting the enrolled courses data" });
+  }
+};
 export {
   getAllCourses,
   getCourseById,
@@ -326,4 +404,6 @@ export {
   updateCourseImage,
   updateCourseData,
   updateCourseLecture,
+  enrollToCourse,
+  getEnrolledCourses,
 };
