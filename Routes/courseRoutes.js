@@ -12,9 +12,11 @@ import {
   getCourseById,
   getEnrolledCourses,
   getInstructorCourses,
+  getUsersCourse,
   updateCourseData,
   updateCourseImage,
   updateCourseLecture,
+  updateLectureProgress,
 } from "../Controllers/courseController.js";
 import cloudinary from "../Config/cloudinaryConfig.js";
 
@@ -64,6 +66,8 @@ router.post("/enroll/:courseId", authMiddleware, enrollToCourse);
 // get enrolled courses
 router.get("/enrolled-courses", authMiddleware, getEnrolledCourses);
 
+router.get("/enrolled-users/:courseId", authMiddleware, getUsersCourse);
+
 // delete uploaded video
 router.post("/delete-video", authMiddleware, async (req, res) => {
   const { publicId } = req.body;
@@ -82,5 +86,8 @@ router.post("/delete-video", authMiddleware, async (req, res) => {
     console.error("Error in deleting the video");
   }
 });
+
+// update the lecture progress
+router.put("/lectureProgress/:courseId", authMiddleware, updateLectureProgress);
 
 export default router;

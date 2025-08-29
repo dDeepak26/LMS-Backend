@@ -14,8 +14,16 @@ const courseEnrollmentSchema = new mongoose.Schema(
     },
     lectureProgress: [
       {
-        // this will CourseModel lectures.$.order
+        // this field contain will CourseModel lectures.$.order
         lectureId: {
+          type: Number,
+          trim: true,
+        },
+        lectureDuration: {
+          type: Number,
+          trim: true,
+        },
+        timeWatched: {
           type: Number,
           trim: true,
         },
@@ -25,7 +33,8 @@ const courseEnrollmentSchema = new mongoose.Schema(
         },
       },
     ],
-    markAsComplete: {
+    // add total lectures count so that we can manage the course complete
+    courseCompleted: {
       type: Boolean,
       default: false,
     },

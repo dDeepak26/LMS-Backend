@@ -78,6 +78,9 @@ const getInstructorCourses = async (req, res) => {
     // getting courses
     const coursesData = await CourseModel.find({
       instructor: instructorId,
+    }).populate({
+      path: "instructor",
+      select: "-password",
     });
 
     if (coursesData.length === 0) {
@@ -396,6 +399,123 @@ const getEnrolledCourses = async (req, res) => {
       .json({ errMsg: "Error in getting the enrolled courses data" });
   }
 };
+
+// get all enrolled user for a specific course by courseId (instructor)
+const getUsersCourse = async (req, res) => {
+  try {
+    // checking if user is student
+    if (req.user.role !== "instructor") {
+      return res.status(403).json({
+        errMsg: "only instructor can get user enrolled data of course",
+      });
+    }
+
+    // course id form params
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // getting the user data from the enrolledCourseModel
+    const enrolledUsers = await CourseEnrollmentModel.find({
+      course: courseId,
+    }).populate({
+      path: "user",
+      select: "-password",
+    });
+
+    if (!enrolledUsers || enrolledUsers.length === 0) {
+      res.status(404).json({ errMsg: "Error in getting th enrolledUsers" });
+    }
+
+    // sending res
+    res.status(200).json(enrolledUsers);
+  } catch (err) {
+    console.error("Error in getting the user enrolled data for the course");
+    res.status(500).json({
+      errMsg: "Error in getting the user enrolled data for the course",
+    });
+  }
+};
+
+// update the lecture progress by getting the data on some events like page refresh, page/tab/browser close
+// by courseId (params), lecture order, video duration, watched time
+const updateLectureProgress = async (req, res) => {
+  try {
+    // checking if user is instructor
+    const student = req.user;
+    if (student.role !== "student") {
+      return res.status(403).json({
+        errMsg: "You are not authorized to update course lecture progress",
+      });
+    }
+
+    // course id
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // checking req body
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ errMsg: "Missing Fields" });
+    }
+
+    // destructuring the req body
+    const { lectureId, lectureDuration, timeWatched, isCompleted } = req.body;
+    console.log(lectureId, typeof lectureDuration, timeWatched, isCompleted);
+
+    // Finding the  enrollment document
+    const enrollment = await CourseEnrollmentModel.findOne({
+      user: student.id,
+      course: courseId,
+    });
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found" });
+    }
+
+    // checking if lecture is in lectureProgress
+    const lectureIndex = enrollment.lectureProgress.some((item) => {
+      console.log(item.lectureId, lectureId);
+
+      return item.lectureId == lectureId;
+    });
+    console.log(lectureIndex);
+
+    if (!lectureIndex) {
+      // Adding new lecture progress if not present
+      enrollment.lectureProgress.push({
+        lectureId: Number(lectureId),
+        lectureDuration: Number(lectureDuration),
+        timeWatched: Number(timeWatched),
+        isCompleted: isCompleted ?? false,
+      });
+    } else {
+      // Updating existing lecture progress
+      const lecture = enrollment.lectureProgress.filter(
+        (l) => l.lectureId == lectureId
+      );
+      console.log(lecture);
+
+      lecture[0].lectureDuration = Number(lectureDuration);
+      lecture[0].timeWatched = Number(timeWatched);
+      lecture[0].isCompleted = isCompleted ?? false;
+    }
+
+    const allCompleted = enrollment.lectureProgress.every(
+      (lecture) => lecture.isCompleted
+    );
+    enrollment.courseCompleted = allCompleted;
+
+    await enrollment.save();
+
+    res.status(200).json(enrollment.lectureProgress);
+  } catch (err) {
+    res.status(500).json({ errMsg: "Error in updating the lecture progress" });
+    console.error("Error in updating the lecture progress", err);
+  }
+};
+
 export {
   getAllCourses,
   getCourseById,
@@ -406,4 +526,6 @@ export {
   updateCourseLecture,
   enrollToCourse,
   getEnrolledCourses,
+  getUsersCourse,
+  updateLectureProgress,
 };
