@@ -462,8 +462,14 @@ const updateLectureProgress = async (req, res) => {
     }
 
     // destructuring the req body
-    const { lectureId, lectureDuration, timeWatched, isCompleted } = req.body;
-    console.log(lectureId, typeof lectureDuration, timeWatched, isCompleted);
+    const {
+      lectureId,
+      videoDuration,
+      watchedTime,
+      lastWatchedTime,
+      isCompleted,
+    } = req.body;
+    console.log(lectureId, typeof videoDuration, watchedTime, isCompleted);
 
     // Finding the  enrollment document
     const enrollment = await CourseEnrollmentModel.findOne({
@@ -486,20 +492,22 @@ const updateLectureProgress = async (req, res) => {
       // Adding new lecture progress if not present
       enrollment.lectureProgress.push({
         lectureId: Number(lectureId),
-        lectureDuration: Number(lectureDuration),
-        timeWatched: Number(timeWatched),
+        videoDuration: Number(videoDuration),
+        watchedTime: Number(watchedTime),
+        lastWatchedTime: Number(lastWatchedTime),
         isCompleted: isCompleted ?? false,
       });
     } else {
       // Updating existing lecture progress
-      const lecture = enrollment.lectureProgress.filter(
+      const lecture = enrollment.lectureProgress.find(
         (l) => l.lectureId == lectureId
       );
       console.log(lecture);
 
-      lecture[0].lectureDuration = Number(lectureDuration);
-      lecture[0].timeWatched = Number(timeWatched);
-      lecture[0].isCompleted = isCompleted ?? false;
+      lecture.videoDuration = Number(videoDuration);
+      lecture.watchedTime = Number(watchedTime);
+      lecture.lastWatchedTime = Number(lastWatchedTime);
+      lecture.isCompleted = isCompleted ?? false;
     }
 
     const allCompleted = enrollment.lectureProgress.every(

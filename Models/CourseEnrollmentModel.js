@@ -19,11 +19,15 @@ const courseEnrollmentSchema = new mongoose.Schema(
           type: Number,
           trim: true,
         },
-        lectureDuration: {
+        videoDuration: {
           type: Number,
           trim: true,
         },
-        timeWatched: {
+        watchedTime: {
+          type: Number,
+          trim: true,
+        },
+        lastWatchedTime: {
           type: Number,
           trim: true,
         },
@@ -32,6 +36,7 @@ const courseEnrollmentSchema = new mongoose.Schema(
           default: false,
         },
       },
+      { _id: false },
     ],
     // add total lectures count so that we can manage the course complete
     courseCompleted: {
