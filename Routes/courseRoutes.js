@@ -20,6 +20,7 @@ import {
   updateLectureProgress,
 } from "../Controllers/courseController.js";
 import cloudinary from "../Config/cloudinaryConfig.js";
+import { CourseModel } from "../Models/courseModel.js";
 
 // get all courses
 router.get("/", authMiddleware, getAllCourses);
@@ -41,7 +42,82 @@ router.post(
 );
 
 // create course quiz (Instructor)
-router.post("/create-quiz/:courseId", authMiddleware, createCourseQuiz);
+router.post("/quiz/:courseId", authMiddleware, createCourseQuiz);
+
+// update course name
+router.patch("/quiz/name/:courseId", authMiddleware, async (req, res) => {
+  try {
+    await CourseModel.findByIdAndUpdate(req.params.courseId, {
+      $set: { "courseQuiz.quizName": req.body.quizName },
+    });
+    res.status(200).json({ msg: "Quiz name updated" });
+  } catch (err) {
+    console.error("error in updating the quiz name", err);
+    res.status(500).json({ errMsg: "error in updating the quiz name", err });
+  }
+});
+
+// update one quiz
+router.patch(
+  "/quiz/question/:courseId/:quizId",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      await CourseModel.findOneAndUpdate(
+        {
+          _id: req.params.courseId,
+          "courseQuiz.quizQuestionList._id": req.params.quizId,
+        },
+        {
+          $set: {
+            "courseQuiz.quizQuestionList.$.question": req.body.question,
+            "courseQuiz.quizQuestionList.$.optionOne": req.body.optionOne,
+            "courseQuiz.quizQuestionList.$.optionTwo": req.body.optionTwo,
+            "courseQuiz.quizQuestionList.$.optionThree": req.body.optionThree,
+            "courseQuiz.quizQuestionList.$.optionFour": req.body.optionFour,
+            "courseQuiz.quizQuestionList.$.answerOption": req.body.answerOption,
+          },
+        }
+      );
+      res.status(200).json({ msg: "Quiz question updated" });
+    } catch (err) {
+      console.error("error in updating the quiz question", err);
+      res
+        .status(500)
+        .json({ errMsg: "error in updating the quiz question", err });
+    }
+  }
+);
+
+// delete one quiz
+router.delete(
+  "/quiz/question/:courseId/:quizId",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      await CourseModel.findByIdAndDelete(req.params.courseId, {
+        $pull: { "courseQuiz.quizQuestionList": { _id: req.params.quizId } },
+      });
+      res.status(200).json({ msg: "Quiz question deleted" });
+    } catch (err) {
+      console.error("error in deleting the quiz question", err);
+      res
+        .status(500)
+        .json({ errMsg: "error in deleting the quiz question", err });
+    }
+  }
+);
+
+// delete quiz
+router.delete("/quiz/:courseId", authMiddleware, async (req, res) => {
+  try {
+    await CourseModel.findByIdAndDelete(req.params.courseId);
+    res.status(200).json({ msg: "Quiz deleted" });
+  } catch (err) {
+    console.error("error in deleting the quiz", err);
+    res.status(500).json({ errMsg: "error in deleting the quiz", err });
+  }
+});
 
 // update course image by Id and previous imageId (Instructor)
 router.put(
