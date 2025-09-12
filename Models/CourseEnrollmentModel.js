@@ -35,10 +35,17 @@ const courseEnrollmentSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        _id: false,
       },
-      { _id: false },
     ],
-    // add total lectures count so that we can manage the course complete
+    lecturesCount: {
+      type: Number,
+      default: 0,
+    },
+    totalDuration: {
+      type: Number,
+      default: 0,
+    },
     courseCompleted: {
       type: Boolean,
       default: false,
@@ -46,6 +53,15 @@ const courseEnrollmentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+courseEnrollmentSchema.pre("save", function (next) {
+  this.lecturesCount = this.lectureProgress.length;
+  this.totalDuration = this.lectureProgress.reduce(
+    (sum, item) => sum + item.videoDuration,
+    0
+  );
+  next();
+});
 
 export const CourseEnrollmentModel = mongoose.model(
   "EnrollmentCourses",

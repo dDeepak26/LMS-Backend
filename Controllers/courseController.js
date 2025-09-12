@@ -156,6 +156,46 @@ const createCourse = async (req, res) => {
   }
 };
 
+// create quiz for course by courseId
+const createCourseQuiz = async (req, res) => {
+  try {
+    // checking user is instructor
+    const instructor = req.user;
+    if (instructor.role !== "instructor") {
+      return res
+        .status(403)
+        .json({ errMsg: "You are not authorized to create course quiz" });
+    }
+
+    // course id
+    const courseId = req.params.courseId;
+    if (!courseId) {
+      return res.status(400).json({ errMsg: "course id is required in path" });
+    }
+
+    // checking req body
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ errMsg: "Missing Fields" });
+    }
+
+    // validating the fields
+
+    const courseDataDb = await CourseModel.findById(courseId);
+
+    courseDataDb.courseQuiz.quizName = req.body.quizName;
+    courseDataDb.courseQuiz.quizQuestionList = req.body.quizQuestionList;
+
+    // saving the data
+    await courseDataDb.save();
+
+    // sending the response
+    res.status(201).json({ msg: "Quiz Created Successfully" });
+  } catch (err) {
+    console.error("Error in create course quiz", err);
+    res.status(500).json({ errMsg: "Error in create course quiz" });
+  }
+};
+
 // update course only by instructor
 // update course image by courseId
 const updateCourseImage = async (req, res) => {
@@ -469,7 +509,6 @@ const updateLectureProgress = async (req, res) => {
       lastWatchedTime,
       isCompleted,
     } = req.body;
-    console.log(lectureId, typeof videoDuration, watchedTime, isCompleted);
 
     // Finding the  enrollment document
     const enrollment = await CourseEnrollmentModel.findOne({
@@ -482,11 +521,8 @@ const updateLectureProgress = async (req, res) => {
 
     // checking if lecture is in lectureProgress
     const lectureIndex = enrollment.lectureProgress.some((item) => {
-      console.log(item.lectureId, lectureId);
-
       return item.lectureId == lectureId;
     });
-    console.log(lectureIndex);
 
     if (!lectureIndex) {
       // Adding new lecture progress if not present
@@ -502,7 +538,6 @@ const updateLectureProgress = async (req, res) => {
       const lecture = enrollment.lectureProgress.find(
         (l) => l.lectureId == lectureId
       );
-      console.log(lecture);
 
       lecture.videoDuration = Number(videoDuration);
       lecture.watchedTime = Number(watchedTime);
@@ -529,6 +564,7 @@ export {
   getCourseById,
   getInstructorCourses,
   createCourse,
+  createCourseQuiz,
   updateCourseImage,
   updateCourseData,
   updateCourseLecture,

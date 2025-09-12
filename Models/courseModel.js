@@ -30,6 +30,33 @@ const lectureSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const quizQuestion = new mongoose.Schema({
+  question: {
+    type: String,
+    trim: true,
+  },
+  optionOne: {
+    type: String,
+    trim: true,
+  },
+  optionTwo: {
+    type: String,
+    trim: true,
+  },
+  optionThree: {
+    type: String,
+    trim: true,
+  },
+  optionFour: {
+    type: String,
+    trim: true,
+  },
+  answerOption: {
+    type: String,
+    trim: true,
+  },
+});
+
 const courseSchema = new mongoose.Schema(
   {
     name: {
@@ -86,6 +113,13 @@ const courseSchema = new mongoose.Schema(
       trim: true,
     },
     lectures: [lectureSchema],
+    courseQuiz: {
+      quizName: {
+        type: String,
+        trim: true,
+      },
+      quizQuestionList: [quizQuestion],
+    },
   },
   { timestamps: true }
 );

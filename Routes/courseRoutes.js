@@ -7,6 +7,7 @@ import { uploadMiddleware } from "../Middleware/uploadMiddleWare.js";
 import { logRequestMiddleware } from "../Middleware/logRequestMiddleware.js";
 import {
   createCourse,
+  createCourseQuiz,
   enrollToCourse,
   getAllCourses,
   getCourseById,
@@ -38,6 +39,9 @@ router.post(
   logRequestMiddleware,
   createCourse
 );
+
+// create course quiz (Instructor)
+router.post("/create-quiz/:courseId", authMiddleware, createCourseQuiz);
 
 // update course image by Id and previous imageId (Instructor)
 router.put(
